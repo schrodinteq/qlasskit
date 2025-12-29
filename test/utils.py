@@ -209,63 +209,66 @@ def compute_result_of_originalf(cls, qf, truth_line):  # noqa: C901
     return res_original_str
 
 
-def compute_and_compare_results(cls, qf, test_original_f=True, test_qcircuit=True):
-    """Create and simulate the qcircuit, and compare the result with the
-    truthtable and with the original_f"""
+def _prepare_truth_table(qf, test_qcircuit):
+    """Prepare truth table and quantum circuit truth subset"""
     MAX_Q_SIM = 64
     MAX_C_SIM = 2**9
-    qc_truth = None
     test_qcircuit = test_qcircuit and COMPILATION_ENABLED
 
     truth_table = qf.truth_table(MAX_C_SIM)
-
     if len(truth_table) > MAX_C_SIM:
         truth_table = [random.choice(truth_table) for x in range(MAX_C_SIM)]
 
+    qc_truth = None
     if len(truth_table) > MAX_Q_SIM and test_qcircuit:
         qc_truth = [random.choice(truth_table) for x in range(MAX_Q_SIM)]
     elif test_qcircuit:
         qc_truth = truth_table
 
-    # circ_qi = qf.circuit().export("circuit", "qiskit")
+    return truth_table, qc_truth
+
+
+def _test_qcircuit_result(cls, qf, truth_line, truth_str):
+    """Test quantum circuit result for a truth line"""
+    max_qubits = (
+        qf.input_size
+        + len(qf.expressions)
+        + sum([gateinputcount(e[1]) for e in qf.expressions])
+    )
+    cls.assertLessEqual(qf.num_qubits, max_qubits)
+
+    if os.getenv("GITHUB_ACTIONS"):
+        res_qc = compute_result_of_qcircuit(cls, qf, truth_line)
+        cls.assertEqual(truth_str, res_qc)
+    else:
+        try:
+            res_qc2 = compute_result_of_qcircuit_using_cnotsim(cls, qf, truth_line)
+            cls.assertEqual(truth_str, res_qc2)
+        except GateNotSimulableException:
+            res_qc = compute_result_of_qcircuit(cls, qf, truth_line)
+            cls.assertEqual(truth_str, res_qc)
+
+
+def compute_and_compare_results(cls, qf, test_original_f=True, test_qcircuit=True):
+    """Create and simulate the qcircuit, and compare the result with the
+    truthtable and with the original_f"""
+    truth_table, qc_truth = _prepare_truth_table(qf, test_qcircuit)
 
     update_statistics(
         qf.circuit().num_qubits, qf.circuit().num_gates, qf.circuit().gate_stats
     )
 
-    # print(qf.expressions)
-    # print(circ_qi.draw("text"))
-    # print(circ_qi.qasm())
-
     for truth_line in truth_table:
-        # Extract str of truthtable and result
         truth_str = "".join(
             map(lambda x: "1" if x else "0", truth_line[-qf.output_size :])
         )
 
-        # Calculate and compare the originalf result
         if test_original_f:
-            res_original = compute_result_of_originalf(cls, qf, truth_line)
-            cls.assertEqual(truth_str, res_original)
+            try:
+                res_original = compute_result_of_originalf(cls, qf, truth_line)
+                cls.assertEqual(truth_str, res_original)
+            except ZeroDivisionError:
+                continue
 
-        # Calculate and compare the gate result
         if qc_truth and truth_line in qc_truth and test_qcircuit:
-            max_qubits = (
-                qf.input_size
-                + len(qf.expressions)
-                + sum([gateinputcount(e[1]) for e in qf.expressions])
-            )
-            cls.assertLessEqual(qf.num_qubits, max_qubits)
-
-            if os.getenv("GITHUB_ACTIONS"):
-                res_qc = compute_result_of_qcircuit(cls, qf, truth_line)
-                cls.assertEqual(truth_str, res_qc)
-            else:
-                try:
-                    res_qc2 = compute_result_of_qcircuit_using_cnotsim(
-                        cls, qf, truth_line
-                    )
-                    cls.assertEqual(truth_str, res_qc2)
-                except GateNotSimulableException:
-                    res_qc = compute_result_of_qcircuit(cls, qf, truth_line)
-                    cls.assertEqual(truth_str, res_qc)
+            _test_qcircuit_result(cls, qf, truth_line, truth_str)

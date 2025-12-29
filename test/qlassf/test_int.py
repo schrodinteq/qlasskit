@@ -130,7 +130,7 @@ class TestQlassfIntParametrized_2_4_8(unittest.TestCase):
         compute_and_compare_results(self, qf)
 
     def test_int_const_compare_eq(self):
-        f = f"def test(a: {self.ttype_str}) -> bool:\n\treturn a == {int(self.ttype_size/2-1)}"
+        f = f"def test(a: {self.ttype_str}) -> bool:\n\treturn a == {int(self.ttype_size / 2 - 1)}"
         qf = qlassf(f, to_compile=COMPILATION_ENABLED, compiler=self.compiler)
         self.assertEqual(len(qf.expressions), 1)
         self.assertEqual(qf.expressions[0][0], _ret)
@@ -382,6 +382,44 @@ class TestQlassfIntMod(unittest.TestCase):
 
     def test_mod_const_in_var(self):
         f = f"def test(a: Qint[4]) -> Qint[4]:\n\tb = {self.val}\n\treturn a % b"
+        qf = qlassf(f, to_compile=COMPILATION_ENABLED, compiler=self.compiler)
+        compute_and_compare_results(self, qf)
+
+
+@parameterized_class(
+    ("val", "compiler"),
+    inject_parameterized_compilers(
+        [
+            (2,),
+            (3,),
+            (4,),
+            (5,),
+            (6,),
+            (8,),
+        ]
+    ),
+)
+class TestQlassfIntFloorDiv(unittest.TestCase):
+    def test_floor_div_const(self):
+        f = f"def test(a: Qint[4]) -> Qint[4]: return a // {self.val}"
+        qf = qlassf(f, to_compile=COMPILATION_ENABLED, compiler=self.compiler)
+        compute_and_compare_results(self, qf)
+
+    def test_floor_div_const_in_var(self):
+        f = f"def test(a: Qint[4]) -> Qint[4]:\n\tb = {self.val}\n\treturn a // b"
+        qf = qlassf(f, to_compile=COMPILATION_ENABLED, compiler=self.compiler)
+        compute_and_compare_results(self, qf)
+
+
+@parameterized_class(("compiler"), ENABLED_COMPILERS)
+class TestQlassfIntFloorDivGeneral(unittest.TestCase):
+    def test_floor_div(self):
+        f = "def test(a: Qint[4], b: Qint[4]) -> Qint[4]: return a // b"
+        qf = qlassf(f, to_compile=COMPILATION_ENABLED, compiler=self.compiler)
+        compute_and_compare_results(self, qf)
+
+    def test_floor_div_qint2(self):
+        f = "def test(a: Qint[2], b: Qint[2]) -> Qint[2]: return a // b"
         qf = qlassf(f, to_compile=COMPILATION_ENABLED, compiler=self.compiler)
         compute_and_compare_results(self, qf)
 
