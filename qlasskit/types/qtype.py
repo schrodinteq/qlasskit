@@ -217,6 +217,10 @@ class Qtype:
         raise Exception("abstract mod")
 
     @staticmethod
+    def floor_div(tleft: TExp, tright: TExp) -> TExp:
+        raise Exception("abstract floor_div")
+
+    @staticmethod
     def bitwise_xor(tleft: TExp, tright: TExp) -> TExp:
         raise Exception("abstract bitwise_xor")
 
