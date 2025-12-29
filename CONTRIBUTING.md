@@ -71,6 +71,7 @@ make html
 
 
 ```bash
+pip install build twine
 rm -r dist/*
 python -m build
 python -m twine upload dist/*
